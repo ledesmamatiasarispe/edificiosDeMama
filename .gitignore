@@ -1,0 +1,60 @@
+# --- Datos privados / copias del sistema original (NUNCA subir) ---
+sistema_acon_copia/
+**/sistema_acon_copia/
+datos_privados/
+scrape/
+scraped/
+copia/
+backups/
+*.sql
+*.sql.gz
+*.dump
+
+# --- Variables de entorno y credenciales ---
+.env
+.env.*
+*.env
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+secrets*.json
+*secret*
+*.credentials
+auth.json
+config.local.*
+
+# --- Dependencias ---
+node_modules/
+vendor/
+bower_components/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# --- Build / caché / logs ---
+dist/
+build/
+.cache/
+*.log
+logs/
+tmp/
+uploads/
+
+# --- Sistema operativo ---
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+.directory
+
+# --- Editores ---
+.vscode/
+.idea/
+*.swp
+*.swo
