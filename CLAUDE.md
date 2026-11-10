@@ -63,7 +63,7 @@ herramientas/   scripts sueltos (compilar, cargar datos)
 
 ### Comandos (Linux, esta PC)
 - Instalar: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirements-dev.txt`
-- Correr: `.venv/bin/python -m app` -> http://localhost:8095 (variable de puerto y de base: ver "Configuración")
+- Correr: `./iniciar.sh` o `.venv/bin/python -m app` -> http://localhost:8095 (variable de puerto y de base: ver "Configuración")
 - Tests: `.venv/bin/python -m pytest -q` (todos tienen que pasar antes de dar algo por terminado)
 - Build: no hay (el frontend se sirve tal cual). El .exe de Windows es opcional y se decide más adelante.
 
@@ -133,6 +133,15 @@ Reglas de cálculo (ver docstring de `expensas.py`):
   y redondeo (total a pesos enteros). Ajustes = deuda − (saldo deudor − pagos): muestra anulaciones posteriores.
   Caja por liquidación: caja_anterior (de la anterior o `consorcios.caja_inicial`), ingresos = pagos informados,
   egresos = gastos + sueldos + particulares. Estado patrimonial = caja final + total a cobrar.
+- Actualización automática (v1.0): `app/actualizador.py` consulta el último release de GitHub (`app/version.py`: VERSION
+  y REPO; `EDIF_REPO` vacío la apaga, así corren los tests). Al admin se le pregunta al entrar; "Ahora no" = 7 días
+  (tabla `config`). Instala: baja .zip + .sha256, copia la base (`data/edificios_antes_de_v<versión>.db`), reemplaza
+  app/, frontend/, herramientas/ y archivos sueltos (PARTES) sin tocar data/ ni .venv/, instala dependencias si
+  cambiaron y se reinicia con `os.execv` (mismo puerto). Si es un repo git con cambios sin commitear en app/ o
+  frontend/, no instala. **Publicar una versión:** subir VERSION en `app/version.py`, escribir `NOVEDADES.md`,
+  commitear, `git tag vX.Y.Z && git push origin vX.Y.Z`; el workflow `.github/workflows/release.yml` corre los tests,
+  arma el paquete (`herramientas/empaquetar.py`) y publica el release.
+- Arranque: `./iniciar.sh` (crea .venv la primera vez y abre el navegador).
 - Impresión: `imprimirLiquidacion()` arma la hoja A4 apaisada (`@page apaisada`) con las secciones del PDF de ACON.
 
 Pruebas de pantalla: no hay navegador en el sistema para esto; se usó Playwright + Chromium instalados en un
@@ -277,3 +286,4 @@ Agregar una línea por decisión, la más nueva abajo: `AAAA-MM-DD — decisión
 - 2026-11-10 — Versión 0.1.0 armada: login por nombre de usuario (no legajo), importes en centavos, cuenta corriente calculada (no guardada), interés solo sobre deuda vencida.
 - 2026-11-10 — Consorcio con todos los campos de ACON (captura del usuario). Interés simple/compuesto y superficies porcentual/absoluta ya afectan el cálculo.
 - 2026-11-10 — v0.2: impresión de expensas igual a la de ACON (dos tandas pedidas por el usuario: formato + encargado/juicios). Redondeo a pesos enteros siempre.
+- 2026-11-10 — v1.0.0: actualización automática desde GitHub Releases (adaptada a Linux, desde código fuente, sin compilar). Probada de punta a punta con un release falso local.

@@ -146,6 +146,11 @@ CREATE TABLE IF NOT EXISTS pagos (
     registrado_por TEXT   NOT NULL DEFAULT '',
     registrado_en  TEXT   NOT NULL DEFAULT ''
 );
+-- Ajustes sueltos de la app (clave -> valor), ej. hasta cuándo se pospuso una actualización
+CREATE TABLE IF NOT EXISTS config (
+    clave TEXT PRIMARY KEY,
+    valor TEXT NOT NULL
+);
 -- Datos de la administración (una sola fila): salen en el encabezado de las expensas
 CREATE TABLE IF NOT EXISTS administracion (
     id               INTEGER PRIMARY KEY CHECK (id = 1),

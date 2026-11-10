@@ -10,17 +10,18 @@ from fastapi import Body, Depends, FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import auth, expensas as ex, servicios as sv, usuarios
+from . import actualizador, auth, expensas as ex, servicios as sv, usuarios
 from .db import inicializar
 from .validar import ErrorDeNegocio, NoEncontrado
+from .version import VERSION
 
 FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
-VERSION = "0.2.0"
 
 
 @asynccontextmanager
 async def _inicio(_app):
     inicializar()
+    actualizador.buscar_en_segundo_plano()
     yield
 
 
@@ -71,6 +72,34 @@ def yo(u: dict = Sesion):
 def cambiar_mi_password(body: dict = Body(...), u: dict = Sesion):
     usuarios.cambiar_password(u, actual=body.get("actual"), nueva=body.get("nueva"))
     return {"ok": True}
+
+
+# ── versión y actualizaciones ──
+@app.get("/api/version")
+def version():
+    """Sin sesión: la pantalla la consulta mientras la app se reinicia después de actualizar."""
+    return {"version": VERSION}
+
+
+@app.get("/api/actualizacion")
+def estado_actualizacion(u: dict = Usuario):
+    return actualizador.estado(es_admin=bool(u["es_admin"]))
+
+
+@app.post("/api/actualizacion/buscar")
+def buscar_actualizacion(u: dict = Admin):
+    actualizador.buscar(forzar=True)
+    return actualizador.estado(es_admin=True)
+
+
+@app.post("/api/actualizacion/posponer")
+def posponer_actualizacion(u: dict = Admin):
+    return {"pospuesta_hasta": actualizador.posponer()}
+
+
+@app.post("/api/actualizacion/instalar")
+def instalar_actualizacion(u: dict = Admin):
+    return actualizador.instalar()
 
 
 # ── usuarios (solo administradores) ──

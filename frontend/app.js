@@ -110,6 +110,75 @@ async function entrar() {
   if (S.usuario.debe_cambiar) { $('#vista').innerHTML = ''; return modalPassword(true); }
   try { await cargarConsorcios(); } catch (e) { return avisar(e.message, true); }
   irA(location.hash.slice(1) || 'inicio');
+  if (S.usuario.es_admin) preguntarActualizacion();
+}
+
+// ── actualizaciones ──
+/** Al entrar un administrador: si hay una versión nueva (y no se pospuso), se pregunta si se instala. */
+async function preguntarActualizacion() {
+  let a;
+  try { a = await api('/api/actualizacion'); } catch { return; }   // sin respuesta, se pregunta la próxima vez
+  if (!a.preguntar || $('#modal').open) return;
+  abrirModal(`<h2 tabindex="-1">Hay una versión nueva</h2>
+    <p>Está disponible la versión <b>${esc(a.nueva)}</b> (la instalada es la ${esc(a.version)}). ¿Querés actualizar ahora?</p>
+    ${a.notas ? `<div class="notas-version">${esc(a.notas)}</div>` : ''}
+    <p class="sutil">Antes se hace una copia de la base. La app se reinicia sola en menos de un minuto: avisá a quien la esté usando. Los datos no se tocan.</p>
+    <p class="error" role="alert"></p>
+    <div class="botones"><button class="primario" id="act-si" ${a.instalable ? '' : 'disabled'}>Actualizar ahora</button>
+      <button id="act-no">Ahora no (preguntar en una semana)</button></div>
+    ${a.instalable ? '' : '<p class="sutil">Esta versión no trae el paquete para instalarse sola: hay que actualizar a mano.</p>'}`);
+  $('#modal-cuerpo h2').focus();
+  $('#act-no').addEventListener('click', async () => {
+    try { const r = await api('/api/actualizacion/posponer', { metodo: 'POST' }); cerrarModal(); avisar(`No se vuelve a preguntar hasta el ${fecha(r.pospuesta_hasta)}. Se puede actualizar antes desde Administración.`); }
+    catch (e) { $('#modal .error').textContent = e.message; }
+  });
+  $('#act-si').addEventListener('click', () => instalarActualizacion());
+}
+
+/** Instala y espera a que la app vuelva con la versión nueva; entonces recarga la página. */
+async function instalarActualizacion() {
+  const antes = (await api('/api/version').catch(() => ({}))).version;
+  abrirModal(`<h2 tabindex="-1">Actualizando…</h2><p role="status">Bajando la versión nueva y guardando una copia de la base. Después la app se reinicia sola: esta página se recarga cuando esté lista.</p>
+    <p class="error" role="alert"></p>`);
+  $('#modal-cuerpo h2').focus();
+  try { await api('/api/actualizacion/instalar', { metodo: 'POST' }); }
+  catch (e) { $('#modal .error').textContent = e.message; $('#modal-cuerpo').insertAdjacentHTML('beforeend', '<div class="botones"><button onclick="cerrarModal()">Cerrar</button></div>'); return; }
+  const inicio = Date.now();
+  const esperar = async () => {
+    try {
+      const r = await fetch('/api/version');
+      if (r.ok && (await r.json()).version !== antes) return location.reload();
+    } catch { /* todavía reiniciando */ }
+    if (Date.now() - inicio > 5 * 60 * 1000) {
+      $('#modal .error').textContent = 'La app tarda en volver. Si no abre, iniciala de nuevo.';
+      return;
+    }
+    setTimeout(esperar, 2000);
+  };
+  setTimeout(esperar, 3000);
+}
+
+async function buscarActualizacion(boton) {
+  boton.disabled = true; boton.textContent = 'Buscando…';
+  try { await api('/api/actualizacion/buscar', { metodo: 'POST' }); irA('administracion'); }
+  catch (e) { avisar(e.message, true); boton.disabled = false; boton.textContent = 'Buscar ahora'; }
+}
+
+function htmlVersion(a) {
+  const admin = S.usuario.es_admin;
+  let estado;
+  if (!a.repo) estado = '<p class="sutil">No hay un repositorio de actualizaciones configurado.</p>';
+  else if (a.error) estado = `<p class="error">${esc(a.error)}</p>`;
+  else if (a.disponible) estado = `<p>Hay una versión nueva: <b>${esc(a.nueva)}</b>${a.url_release ? ` · <a href="${esc(a.url_release)}" target="_blank" rel="noopener">ver en GitHub</a>` : ''}</p>
+    ${a.notas ? `<div class="notas-version">${esc(a.notas)}</div>` : ''}
+    ${a.pospuesta_hasta ? `<p class="sutil">Se pospuso: al entrar no se vuelve a preguntar hasta el ${fecha(a.pospuesta_hasta)}.</p>` : ''}
+    ${admin ? (a.instalable ? '<button class="primario" onclick="instalarActualizacion()">Actualizar ahora</button>'
+      : '<p class="sutil">Esta versión no trae el paquete para instalarse sola: hay que actualizar a mano.</p>') : '<p class="sutil">La instala un administrador.</p>'}`;
+  else estado = '<p>Estás usando la última versión.</p>';
+  return `<section class="tarjeta"><h3>Versión y actualizaciones</h3>
+    <p>Versión instalada: <b>${esc(a.version)}</b></p>${estado}
+    ${a.repo ? `<p class="sutil">Se busca en GitHub (${esc(a.repo)}) cada vez que arranca la app${a.buscado_en ? ' · última búsqueda: ' + esc(a.buscado_en) : ''}.</p>` : ''}
+    ${admin && a.repo ? '<button onclick="buscarActualizacion(this)">Buscar ahora</button>' : ''}</section>`;
 }
 
 function modalPassword(obligatorio = false) {
@@ -886,7 +955,7 @@ function htmlCuenta(u) {
 
 // ── ADMINISTRACIÓN (datos del encabezado de las expensas) y RUBROS ──
 VISTAS.administracion = async () => {
-  const [a, rubros] = await Promise.all([api('/api/administracion'), api('/api/rubros')]);
+  const [a, rubros, act] = await Promise.all([api('/api/administracion'), api('/api/rubros'), api('/api/actualizacion')]);
   S.admin = a; S.rubros = rubros;
   $('#vista').innerHTML = `
     <div class="encabezado"><h2>Administración</h2></div>
@@ -906,7 +975,8 @@ VISTAS.administracion = async () => {
       ${rubros.map(r => `<tr class="${r.activo ? '' : 'baja'}"><td>${r.numero}</td><td>${esc(r.nombre)}</td>
         <td class="botones"><button class="chico" onclick="modalRubro(${r.id})">Editar</button>
         <button class="chico ${r.activo ? 'peligro' : ''}" onclick="hacer(api('/api/rubros/${r.id}/${r.activo ? 'baja' : 'alta'}', {metodo:'POST'}), null, 'administracion')">${r.activo ? 'Dar de baja' : 'Reactivar'}</button></td></tr>`).join('')}
-      </tbody></table></div></section>`;
+      </tbody></table></div></section>
+    ${htmlVersion(act)}`;
 };
 
 function modalAdministracion() {

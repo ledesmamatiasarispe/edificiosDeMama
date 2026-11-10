@@ -1,5 +1,8 @@
 """Cada test usa una base nueva y vacía en una carpeta temporal (nunca la base real)."""
 import importlib
+import os
+
+os.environ["EDIF_REPO"] = ""   # los tests nunca salen a internet a buscar actualizaciones
 
 import pytest
 from fastapi.testclient import TestClient

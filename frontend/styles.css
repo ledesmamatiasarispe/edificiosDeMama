@@ -120,6 +120,7 @@ fieldset { border: 1px solid var(--borde); border-radius: 8px; padding: .6rem .9
 legend { font-weight: 600; padding: 0 .3rem; }
 label small { font-size: .8rem; }
 .link.azul { color: var(--azul); font-weight: 600; }
+.notas-version { white-space: pre-wrap; background: #f8fafb; border: 1px solid var(--borde); border-radius: 8px; padding: .6rem .8rem; margin: .5rem 0; max-height: 240px; overflow-y: auto; }
 .aviso-fijo { background: var(--ambar-claro); color: #6b4000; border-radius: 6px; padding: .5rem .8rem; }
 dl.dos-columnas { grid-template-columns: max-content 1fr max-content 1fr; }
 @media (max-width: 760px) { dl.dos-columnas { grid-template-columns: auto 1fr; } }

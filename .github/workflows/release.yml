@@ -1,0 +1,32 @@
+# Al empujar un tag "v1.2.3": corre los tests, arma el paquete y publica el release con el .zip y su .sha256.
+# Es lo que busca el actualizador de la app (app/actualizador.py). El tag tiene que coincidir con app/version.py.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Dependencias
+        run: python -m pip install -r requirements.txt -r requirements-dev.txt
+      - name: Tests
+        run: python -m pytest -q
+      - name: Armar el paquete
+        run: python herramientas/empaquetar.py --tag ${{ github.ref_name }}
+      - name: Publicar el release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.zip
+            dist/*.sha256
+          body_path: NOVEDADES.md
