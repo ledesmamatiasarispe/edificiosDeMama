@@ -3,6 +3,7 @@
 Los cuerpos llegan como dict y se pasan crudos: la validación está en servicios/expensas, así un "7,5" o una
 fecha mal escrita termina en un mensaje claro (400) y no en un error interno.
 """
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -15,7 +16,8 @@ from .db import inicializar
 from .validar import ErrorDeNegocio, NoEncontrado
 from .version import VERSION
 
-FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
+# compilada, PyInstaller deja frontend/ en su carpeta interna (sys._MEIPASS)
+FRONTEND = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent)) / "frontend"
 
 
 @asynccontextmanager

@@ -141,7 +141,18 @@ Reglas de cálculo (ver docstring de `expensas.py`):
   frontend/, no instala. **Publicar una versión:** subir VERSION en `app/version.py`, escribir `NOVEDADES.md`,
   commitear, `git tag vX.Y.Z && git push origin vX.Y.Z`; el workflow `.github/workflows/release.yml` corre los tests,
   arma el paquete (`herramientas/empaquetar.py`) y publica el release.
-- Arranque: `./iniciar.sh` (crea .venv la primera vez y abre el navegador).
+- Versión COMPILADA (v1.1): `herramientas/compilar.py` (PyInstaller --onedir) arma `dist/EdificiosDeMama/` y
+  `edificiosDeMama-vX-<windows|linux|macos>.zip` + .sha256. El workflow compila en windows-latest, ubuntu-22.04
+  (glibc viejo = corre en más Linux) y macos-latest, prueba que el ejecutable arranque y publica todo junto con el
+  paquete del código fuente. Compilada: `data/` va al lado del ejecutable (`db.ROOT`), `frontend/` sale de
+  `sys._MEIPASS`, abre el navegador sola (`EDIF_NAVEGADOR=0` lo evita) y si ya corre solo abre el navegador.
+  El actualizador elige el paquete según `version.plataforma()`; Linux/Mac se reemplaza y se reinicia con
+  `os.execv`; Windows usa un .bat (robocopy sin borrar, excluye data/). Probado de punta a punta en Linux.
+  Mac no está firmado (Gatekeeper: clic derecho > Abrir). Windows y Mac compilados no se probaron en una máquina real.
+- Arranque (Windows/Linux/Mac): `iniciar.py` hace todo con la biblioteca estándar (crea .venv, reinstala dependencias
+  si cambió requirements.txt, si la app ya corre solo abre el navegador). Lanzadores de doble clic que solo lo llaman:
+  `iniciar.bat` (Windows, CRLF), `iniciar.command` (Mac), `iniciar.sh` (Linux). `python3 iniciar.py --acceso-directo`
+  crea el ícono en el menú y el escritorio de Linux (ya creado en esta PC). Windows y Mac no se probaron en una máquina real.
 - Impresión: `imprimirLiquidacion()` arma la hoja A4 apaisada (`@page apaisada`) con las secciones del PDF de ACON.
 
 Pruebas de pantalla: no hay navegador en el sistema para esto; se usó Playwright + Chromium instalados en un
@@ -287,3 +298,6 @@ Agregar una línea por decisión, la más nueva abajo: `AAAA-MM-DD — decisión
 - 2026-11-10 — Consorcio con todos los campos de ACON (captura del usuario). Interés simple/compuesto y superficies porcentual/absoluta ya afectan el cálculo.
 - 2026-11-10 — v0.2: impresión de expensas igual a la de ACON (dos tandas pedidas por el usuario: formato + encargado/juicios). Redondeo a pesos enteros siempre.
 - 2026-11-10 — v1.0.0: actualización automática desde GitHub Releases (adaptada a Linux, desde código fuente, sin compilar). Probada de punta a punta con un release falso local.
+
+- 2026-11-10 — Lanzador multiplataforma (iniciar.py + .bat/.command/.sh); también se actualizan solos (están en PARTES).
+- 2026-11-10 — v1.1.0: versión compilada (PyInstaller) para Windows, Linux y Mac, pedida por el usuario; se actualiza sola.

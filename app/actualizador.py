@@ -14,13 +14,20 @@ Instalar:
 6. La app se reinicia sola con la versión nueva (mismo proceso, mismo puerto).
 
 Si la carpeta es un repositorio git con cambios sin guardar en el programa, no se instala (para no pisar trabajo).
+
+Versión COMPILADA (el ejecutable de PyInstaller, sin Python): baja el paquete de su sistema
+(edificiosDeMama-vX-windows.zip / -linux.zip / -macos.zip) y reemplaza todo lo que está al lado del ejecutable salvo
+data/. En Linux y Mac lo hace la misma app y se reinicia; en Windows (que no deja pisar un programa abierto) deja un
+.bat que espera a que la app se cierre, copia los archivos nuevos y la vuelve a abrir.
 """
 import hashlib
 import json
 import os
 import shutil
 import subprocess
+import stat
 import sys
+import tempfile
 import threading
 import time
 import urllib.error
@@ -36,7 +43,8 @@ from .validar import ErrorDeNegocio
 # EDIF_API_ACTUALIZACION la reemplaza solo para probar contra un servidor local
 API = os.environ.get("EDIF_API_ACTUALIZACION", "https://api.github.com/repos/{repo}/releases/latest")
 INSTALACION = Path(__file__).resolve().parent.parent
-PARTES = ("app", "frontend", "herramientas", "requirements.txt", "requirements-dev.txt", "README.md", "CLAUDE.md", "iniciar.sh")
+PARTES = ("app", "frontend", "herramientas", "requirements.txt", "requirements-dev.txt", "README.md", "CLAUDE.md",
+          "iniciar.py", "iniciar.sh", "iniciar.command", "iniciar.bat", "NOVEDADES.md")
 POSPONER_DIAS = 7
 _CACHE_SEGUNDOS = 6 * 3600      # la consulta a GitHub se repite cada tanto, no en cada pantalla
 _REINTENTO_SEGUNDOS = 10 * 60   # si falló, se vuelve a probar a los 10 minutos
@@ -77,6 +85,16 @@ def _explicar_http(e: urllib.error.HTTPError) -> str:
     return f"No se pudo consultar GitHub (HTTP {e.code})."
 
 
+def paquete_para(nombres: list[str], compilada: bool | None = None) -> str | None:
+    """El .zip que corresponde a esta instalación: el de su sistema si es compilada; el del código fuente si no."""
+    compilada = v.COMPILADA if compilada is None else compilada
+    zips = [n for n in nombres if n.lower().endswith(".zip")]
+    sufijos = tuple(f"-{p}.zip" for p in ("windows", "linux", "macos"))
+    if compilada:
+        return next((n for n in zips if n.lower().endswith(f"-{v.plataforma()}.zip")), None)
+    return next((n for n in zips if not n.lower().endswith(sufijos)), None)
+
+
 def buscar(forzar: bool = False) -> dict:
     """El último release: versión, notas y el .zip a instalar. Guarda el resultado un rato para no consultar de más."""
     with _lock:
@@ -91,11 +109,11 @@ def buscar(forzar: bool = False) -> dict:
             try:
                 rel = json.loads(_pedir(API.format(repo=v.REPO)))
                 assets = {a["name"]: a["browser_download_url"] for a in rel.get("assets", [])}
-                zips = [n for n in assets if n.lower().endswith(".zip")]
                 info.update(nueva=rel.get("tag_name"), notas=(rel.get("body") or "")[:4000], url_release=rel.get("html_url"))
-                if zips:
-                    info["zip"] = {"nombre": zips[0], "url": assets[zips[0]]}
-                    info["sha256"] = assets.get(zips[0] + ".sha256")
+                nombre = paquete_para(list(assets))
+                if nombre:
+                    info["zip"] = {"nombre": nombre, "url": assets[nombre]}
+                    info["sha256"] = assets.get(nombre + ".sha256")
             except urllib.error.HTTPError as e:
                 # 404: el repositorio todavía no publicó ninguna versión (no es una falla)
                 info["error"] = None if e.code == 404 else _explicar_http(e)
@@ -127,18 +145,29 @@ def posponer() -> str:
     return hasta
 
 
-def _extraer(zip_path: Path, destino: Path) -> Path:
-    """Descomprime controlando que nada se escriba fuera de `destino`. Devuelve la carpeta que tiene app/main.py."""
+def _marcador() -> str:
+    """El archivo que tiene que traer el paquete para ser la versión correcta de esta instalación."""
+    return v.EJECUTABLE if v.COMPILADA else "app/main.py"
+
+
+def _extraer(zip_path: Path, destino: Path, marcador: str | None = None) -> Path:
+    """Descomprime controlando que nada se escriba fuera de `destino` y conservando los permisos de ejecución
+    (zipfile no los restaura solo). Devuelve la carpeta que tiene el marcador (app/main.py o el ejecutable)."""
+    marcador = marcador or _marcador()
     with zipfile.ZipFile(zip_path) as z:
         base = destino.resolve()
         for nombre in z.namelist():
             if not (base / nombre).resolve().is_relative_to(base):
                 raise ErrorDeNegocio("El archivo de la actualización tiene rutas inválidas: no se instala.")
-        z.extractall(destino)
-    for main in [destino / "app" / "main.py", *destino.glob("*/app/main.py")]:
-        if main.is_file():
-            return main.parent.parent
-    raise ErrorDeNegocio("La actualización no trae el programa (app/main.py): no se instala.")
+        for info in z.infolist():
+            ruta = Path(z.extract(info, destino))
+            modo = (info.external_attr >> 16) & 0o777
+            if modo and not info.is_dir():
+                ruta.chmod(modo | stat.S_IRUSR | stat.S_IWUSR)
+    for m in [destino / marcador, *destino.glob("*/" + marcador)]:
+        if m.is_file():
+            return m.parents[marcador.count("/")]   # la carpeta que contiene el marcador
+    raise ErrorDeNegocio(f"La actualización no trae el programa ({marcador}): no se instala.")
 
 
 def preparar(info: dict, carpeta: Path) -> Path:
@@ -165,15 +194,18 @@ def _cambios_sin_guardar(instalacion: Path) -> bool:
         return False
 
 
-def copiar_version(nueva: Path, instalacion: Path, respaldo: Path) -> bool:
-    """Reemplaza las PARTES de la instalación por las de `nueva`; lo anterior queda en `respaldo`.
-    Si algo falla, deja todo como estaba. Devuelve True si cambiaron las dependencias (requirements.txt)."""
+def copiar_version(nueva: Path, instalacion: Path, respaldo: Path, partes=PARTES) -> bool:
+    """Reemplaza las `partes` de la instalación por las de `nueva` (None = todo lo que trae `nueva`, salvo data/);
+    lo anterior queda en `respaldo`. Si algo falla, deja todo como estaba.
+    Devuelve True si cambiaron las dependencias (requirements.txt)."""
+    if partes is None:
+        partes = tuple(p.name for p in nueva.iterdir() if p.name != "data")
     shutil.rmtree(respaldo, ignore_errors=True)
     respaldo.mkdir(parents=True)
     req_antes = (instalacion / "requirements.txt").read_bytes() if (instalacion / "requirements.txt").exists() else b""
     movidas = []
     try:
-        for parte in PARTES:
+        for parte in partes:
             origen = nueva / parte
             if not origen.exists():
                 continue
@@ -185,10 +217,10 @@ def copiar_version(nueva: Path, instalacion: Path, respaldo: Path) -> bool:
                 shutil.copytree(origen, destino, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
             else:
                 shutil.copy2(origen, destino)
-                if parte.endswith(".sh"):
+                if parte.endswith((".sh", ".command")) or parte == v.EJECUTABLE:
                     destino.chmod(0o755)
     except Exception:
-        for parte in PARTES:   # vuelve a poner lo anterior
+        for parte in partes:   # vuelve a poner lo anterior
             destino = instalacion / parte
             if parte in movidas:
                 shutil.rmtree(destino, ignore_errors=True) if destino.is_dir() else destino.unlink(missing_ok=True)
@@ -199,13 +231,38 @@ def copiar_version(nueva: Path, instalacion: Path, respaldo: Path) -> bool:
 
 
 def _reiniciar() -> None:
-    """Vuelve a arrancar la app en el mismo proceso (mismo PID y puerto) con el código nuevo."""
+    """Vuelve a arrancar la app en el mismo proceso (mismo PID y puerto) con el programa nuevo."""
+    os.environ["EDIF_NAVEGADOR"] = "0"   # el navegador ya está abierto: la página se recarga sola
+    if v.COMPILADA:
+        exe = Path(sys.executable).resolve().parent / v.EJECUTABLE
+        os.execv(str(exe), [str(exe)])
     os.chdir(INSTALACION)
     os.execv(sys.executable, [sys.executable, "-m", "app"])
 
 
+def _instalar_windows(nueva: Path, instalacion: Path, trabajo: Path, nombre_version: str) -> None:
+    """Windows no deja reemplazar un programa abierto: un .bat espera a que la app se cierre, copia y la vuelve a abrir."""
+    log = trabajo.parent / "actualizacion.log"
+    bat = Path(tempfile.gettempdir()) / f"actualizar_edificios_{os.getpid()}.bat"
+    datos = (instalacion / "data").resolve()
+    # robocopy sin /MIR: agrega y pisa, nunca borra (así data/ queda como está)
+    bat.write_text(f"""@echo off
+chcp 65001 >nul
+echo Actualizando Edificios de Mamá a {nombre_version}...
+:esperar
+tasklist /FI "PID eq {os.getpid()}" 2>nul | find "{os.getpid()}" >nul && (timeout /t 1 /nobreak >nul & goto esperar)
+robocopy "{nueva}" "{instalacion}" /E /XD "{datos}" /R:10 /W:2 /NP /LOG:"{log}"
+set EDIF_NAVEGADOR=0
+start "" "{instalacion / v.EJECUTABLE}"
+del "%~f0"
+""", encoding="utf-8")
+    subprocess.Popen(["cmd", "/c", str(bat)], close_fds=True,
+                     creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NEW_PROCESS_GROUP)
+    threading.Timer(1.5, os._exit, [0]).start()   # deja salir la respuesta antes de cerrarse
+
+
 def instalar(instalacion: Path | None = None, reiniciar=None) -> dict:
-    instalacion = instalacion or INSTALACION
+    instalacion = instalacion or (Path(sys.executable).resolve().parent if v.COMPILADA else INSTALACION)
     info = buscar(forzar=True)
     if not (info["nueva"] and es_mas_nueva(info["nueva"])):
         raise ErrorDeNegocio("No hay una versión más nueva para instalar.")
@@ -220,8 +277,11 @@ def instalar(instalacion: Path | None = None, reiniciar=None) -> dict:
         copia.unlink(missing_ok=True)
         with db.transaccion() as c:
             c.execute("VACUUM INTO ?", (str(db.DB_PATH.parent / f"edificios_antes_de_{info['nueva']}.db"),))
-    cambiaron_dependencias = copiar_version(nueva, instalacion, trabajo / "anterior")
-    if cambiaron_dependencias:
+    if v.COMPILADA and os.name == "nt":
+        _instalar_windows(nueva, instalacion, trabajo, info["nueva"])
+        return {"ok": True, "nueva": info["nueva"]}
+    cambiaron_dependencias = copiar_version(nueva, instalacion, trabajo / "anterior", None if v.COMPILADA else PARTES)
+    if cambiaron_dependencias and not v.COMPILADA:
         r = subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-r", str(instalacion / "requirements.txt")],
                            capture_output=True, text=True, timeout=900)
         if r.returncode != 0:

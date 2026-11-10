@@ -1,5 +1,6 @@
-# Al empujar un tag "v1.2.3": corre los tests, arma el paquete y publica el release con el .zip y su .sha256.
-# Es lo que busca el actualizador de la app (app/actualizador.py). El tag tiene que coincidir con app/version.py.
+# Al empujar un tag "v1.2.3": corre los tests, compila la app en Windows, Linux y Mac, arma el paquete del código
+# fuente y publica el release con cada .zip y su .sha256. Es lo que busca el actualizador (app/actualizador.py).
+# El tag tiene que coincidir con app/version.py.
 name: Release
 
 on:
@@ -10,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  publicar:
+  fuente:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,12 +22,54 @@ jobs:
         run: python -m pip install -r requirements.txt -r requirements-dev.txt
       - name: Tests
         run: python -m pytest -q
-      - name: Armar el paquete
+      - name: Paquete del código fuente
         run: python herramientas/empaquetar.py --tag ${{ github.ref_name }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fuente
+          path: dist/*
+
+  compilar:
+    needs: fuente
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-22.04, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Dependencias
+        run: python -m pip install -r requirements.txt pyinstaller
+      - name: Compilar
+        run: python herramientas/compilar.py --tag ${{ github.ref_name }}
+      - name: Probar que el programa compilado arranca
+        shell: bash
+        run: |
+          EDIF_NAVEGADOR=0 EDIF_REPO= EDIF_PUERTO=8123 ./dist/EdificiosDeMama/EdificiosDeMama &
+          for i in $(seq 1 60); do curl -sf http://localhost:8123/api/version && exit 0; sleep 2; done
+          echo "El programa compilado no arrancó"; exit 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: compilada-${{ matrix.os }}
+          path: |
+            dist/*.zip
+            dist/*.sha256
+
+  publicar:
+    needs: [fuente, compilar]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: paquetes
+          merge-multiple: true
       - name: Publicar el release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/*.zip
-            dist/*.sha256
+            paquetes/*.zip
+            paquetes/*.sha256
           body_path: NOVEDADES.md

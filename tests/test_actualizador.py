@@ -147,3 +147,43 @@ def test_solo_un_admin_instala(cliente, github):
     cliente.post("/api/auth/password", json={"actual": "123456", "nueva": "abcdef"}, headers=h)
     assert cliente.post("/api/actualizacion/instalar", headers=h).status_code == 403
     assert not cliente.get("/api/actualizacion", headers=h).json()["preguntar"]
+
+
+def test_elige_el_paquete_de_su_sistema(monkeypatch):
+    nombres = ["edificiosDeMama-v2.0.0.zip", "edificiosDeMama-v2.0.0-windows.zip", "edificiosDeMama-v2.0.0-linux.zip",
+               "edificiosDeMama-v2.0.0-macos.zip", "edificiosDeMama-v2.0.0-linux.zip.sha256"]
+    assert act.paquete_para(nombres, compilada=False) == "edificiosDeMama-v2.0.0.zip"
+    for sistema in ("windows", "linux", "macos"):
+        monkeypatch.setattr(act.v, "plataforma", lambda s=sistema: s)
+        assert act.paquete_para(nombres, compilada=True) == f"edificiosDeMama-v2.0.0-{sistema}.zip"
+    assert act.paquete_para(["edificiosDeMama-v2.0.0.zip"], compilada=True) is None   # sin paquete compilado: no instala
+
+
+def test_al_descomprimir_el_ejecutable_sigue_siendo_ejecutable(tmp_path):
+    origen = tmp_path / "EdificiosDeMama"
+    origen.mkdir()
+    exe = origen / act.v.EJECUTABLE
+    exe.write_text("#!/bin/sh\n")
+    exe.chmod(0o755)
+    z = tmp_path / "paquete.zip"
+    with zipfile.ZipFile(z, "w") as zf:
+        zf.write(exe, f"EdificiosDeMama/{exe.name}")
+    carpeta = act._extraer(z, tmp_path / "destino", marcador=exe.name)
+    assert carpeta == tmp_path / "destino" / "EdificiosDeMama"
+    assert (carpeta / exe.name).stat().st_mode & 0o111
+
+
+def test_compilada_reemplaza_todo_menos_los_datos(tmp_path):
+    nueva, instalacion = tmp_path / "nueva", tmp_path / "instalacion"
+    (nueva / "_internal").mkdir(parents=True)
+    (nueva / "_internal" / "lib.so").write_text("nueva")
+    (nueva / act.v.EJECUTABLE).write_text("exe nuevo")
+    (instalacion / "_internal").mkdir(parents=True)
+    (instalacion / "_internal" / "vieja.so").write_text("vieja")
+    (instalacion / act.v.EJECUTABLE).write_text("exe viejo")
+    (instalacion / "data").mkdir()
+    (instalacion / "data" / "edificios.db").write_text("DATOS")
+    act.copiar_version(nueva, instalacion, tmp_path / "respaldo", partes=None)
+    assert (instalacion / act.v.EJECUTABLE).read_text() == "exe nuevo"
+    assert (instalacion / "_internal" / "lib.so").exists() and not (instalacion / "_internal" / "vieja.so").exists()
+    assert (instalacion / "data" / "edificios.db").read_text() == "DATOS"

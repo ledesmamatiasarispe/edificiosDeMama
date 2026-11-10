@@ -5,10 +5,13 @@ Los importes de dinero se guardan SIEMPRE en centavos (número entero), nunca co
 """
 import os
 import sqlite3
+import sys
 from contextlib import contextmanager
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+# Compilada, el programa va en _internal/ y cada actualización lo reemplaza entero: los datos tienen que quedar al lado
+# del ejecutable, fuera de lo que se reemplaza. Desde el código fuente, en la raíz del proyecto.
+ROOT = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
 DB_PATH = Path(os.environ.get("EDIF_DB", ROOT / "data" / "edificios.db"))
 
 GRUPOS = ("A", "B", "C", "D", "E")
