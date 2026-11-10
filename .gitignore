@@ -58,3 +58,10 @@ desktop.ini
 .idea/
 *.swp
 *.swo
+
+# Base de datos local de la app
+data/
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
