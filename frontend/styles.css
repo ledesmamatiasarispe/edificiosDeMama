@@ -1,0 +1,165 @@
+:root {
+  --fondo: #f4f6f8; --tarjeta: #fff; --texto: #1d2733; --sutil: #66717d; --borde: #dde3e9;
+  --azul: #1f5f99; --azul-claro: #e6eff8; --verde: #2e7d32; --verde-claro: #e3f2e5;
+  --rojo: #c0392b; --rojo-claro: #fbe7e5; --ambar: #b26a00; --ambar-claro: #fff1d6; --gris-claro: #eef1f4;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 15px/1.45 "Segoe UI", system-ui, sans-serif; background: var(--fondo); color: var(--texto); }
+h1, h2, h3 { margin: 0 0 .5rem; line-height: 1.2; }
+h2 { font-size: 1.35rem; } h3 { font-size: 1.05rem; }
+.oculto { display: none !important; }
+.sutil { color: var(--sutil); }
+.error { color: var(--rojo); min-height: 1.2em; margin: .3rem 0; }
+a { color: var(--azul); cursor: pointer; }
+
+/* barra */
+.barra { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 1rem; padding: .5rem 1rem;
+  background: #17324d; color: #fff; flex-wrap: wrap; }
+.marca { font-weight: 700; letter-spacing: .02em; display: inline-flex; align-items: center; gap: .45rem; }
+.marca img { width: 30px; height: 30px; }
+.login-logo { width: 64px; height: 64px; align-self: center; }
+.login-caja h1 { text-align: center; margin-bottom: 0; }
+.login-caja h1 + .sutil { text-align: center; margin-top: 0; }
+#menu { display: flex; gap: .25rem; flex-wrap: wrap; flex: 1; }
+#menu a { color: #cfe0f1; padding: .35rem .65rem; border-radius: 6px; text-decoration: none; }
+#menu a:hover { background: #24476b; }
+#menu a.activo { background: #fff; color: #17324d; font-weight: 600; }
+.usuario { font-size: .9rem; color: #cfe0f1; }
+.link { background: none; border: 0; color: inherit; text-decoration: underline; cursor: pointer; font: inherit; padding: 0; }
+
+main { max-width: 1280px; margin: 0 auto; padding: 1.2rem 1rem 3rem; }
+.encabezado { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.tarjeta { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 10px; padding: 1rem 1.1rem; margin-bottom: 1rem; }
+.inicio-cumplimiento { display: flex; flex-wrap: wrap; align-items: baseline; gap: .4rem 1.2rem; }
+.inicio-cumplimiento h3 { margin: 0; }
+.grilla { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.numero-grande { font-size: 2.2rem; font-weight: 700; }
+
+/* botones y formularios */
+button { font: inherit; cursor: pointer; border-radius: 7px; border: 1px solid var(--borde); background: #fff; padding: .45rem .9rem; }
+button:hover { border-color: var(--azul); }
+button.primario { background: var(--azul); border-color: var(--azul); color: #fff; font-weight: 600; }
+button.peligro { color: var(--rojo); border-color: #e8b4ae; }
+button.chico { padding: .2rem .55rem; font-size: .85rem; }
+button:disabled { opacity: .5; cursor: default; }
+.botones { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+label { display: flex; flex-direction: column; gap: .2rem; font-size: .88rem; color: var(--sutil); }
+label.check { flex-direction: row; align-items: center; gap: .45rem; color: var(--texto); font-size: .95rem; }
+input, select, textarea { font: inherit; color: var(--texto); padding: .45rem .55rem; border: 1px solid #c9d2db; border-radius: 6px; background: #fff; width: 100%; }
+input[type=checkbox] { width: auto; }
+textarea { min-height: 4.5rem; resize: vertical; }
+.campos { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); margin-bottom: .9rem; }
+.campos .ancho { grid-column: 1 / -1; }
+
+/* tablas */
+.tabla-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; background: #fff; }
+th, td { padding: .45rem .55rem; border-bottom: 1px solid var(--borde); text-align: left; vertical-align: top; }
+th { font-size: .8rem; text-transform: uppercase; letter-spacing: .03em; color: var(--sutil); background: #f8fafb; }
+tr.baja td { color: var(--sutil); text-decoration: line-through; }
+tr.baja td button { text-decoration: none; }
+/* lo dado de baja u obsoleto se oculta salvo con "Ver ocultos" */
+table[data-ocultos-tabla]:not(.mostrar-ocultos) tr.baja { display: none; }
+.ver-ocultos { justify-content: flex-end; margin-bottom: .4rem; font-size: .85rem; color: var(--sutil); }
+.vacio { color: var(--sutil); padding: 1rem; text-align: center; }
+/* novedades de una versión nueva (texto del release de GitHub, tal cual) */
+.notas-version { white-space: pre-wrap; background: var(--gris-claro); border-radius: 6px; padding: .6rem .8rem; margin: .5rem 0;
+  max-height: 14rem; overflow: auto; font-size: .9rem; }
+/* lista editable (repuestos del instructivo): manija para arrastrar, texto, eliminar */
+.lista-editable td { vertical-align: middle; padding: .3rem .4rem; }
+.lista-editable td:first-child { width: 1.6rem; }
+.lista-editable td:last-child { width: 1%; white-space: nowrap; }
+.lista-editable .manija { cursor: grab; color: var(--sutil); text-align: center; user-select: none; font-size: 1.1rem; }
+.lista-editable tr.arrastrando { opacity: .45; background: var(--azul-claro); }
+.lista-editable tfoot td { border-bottom: 0; }
+.lista-editable th { padding: .3rem .4rem; }
+.lista-editable td:nth-child(3) { width: 7.5rem; }
+.lista-editable .cantidad { text-align: right; }
+.doc .repuestos-doc { width: auto; min-width: 50%; }
+.doc .repuestos-doc td:last-child, .doc .repuestos-doc th:last-child { text-align: right; }
+
+/* etiquetas de estado */
+.chip { display: inline-block; padding: .1rem .5rem; border-radius: 99px; font-size: .8rem; font-weight: 600; background: var(--gris-claro); white-space: nowrap; }
+.chip.verde { background: var(--verde-claro); color: var(--verde); }
+.chip.rojo { background: var(--rojo-claro); color: var(--rojo); }
+.chip.ambar { background: var(--ambar-claro); color: var(--ambar); }
+.chip.azul { background: var(--azul-claro); color: var(--azul); }
+
+/* modal y aviso */
+dialog { border: 0; border-radius: 12px; padding: 1.2rem 1.3rem; width: min(680px, calc(100vw - 32px)); max-height: calc(100vh - 32px); box-shadow: 0 12px 40px rgba(0,0,0,.25); }
+dialog.grande { width: min(1100px, calc(100vw - 32px)); }
+dialog::backdrop { background: rgba(15, 30, 45, .45); }
+.aviso { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); background: #17324d; color: #fff; padding: .7rem 1.2rem; border-radius: 8px; z-index: 20; max-width: calc(100vw - 32px); }
+.aviso.mal { background: var(--rojo); }
+
+.login { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+.login-caja { width: min(360px, 100%); display: flex; flex-direction: column; gap: .7rem; }
+
+td b, .crono td:first-child, .crono td a { white-space: nowrap; }
+.crono { min-width: 980px; }
+.encabezado > * { min-width: 0; }
+
+@media (max-width: 640px) {
+  main { padding: 1rem 16px 3rem; }
+  .barra { gap: .3rem .8rem; padding: .5rem 16px; }
+  .marca { flex: 1; }
+  #menu { order: 3; flex: 1 0 100%; flex-wrap: nowrap; overflow-x: auto; }
+  #menu a { white-space: nowrap; }
+}
+
+@media print {
+  body { background: #fff; font-size: 11pt; }
+  .barra, .no-imprimir, .aviso, .encabezado .botones { display: none !important; }
+  main { padding: 0; max-width: none; }
+  .tarjeta { border: 0; padding: 0; }
+  @page { size: A4; margin: 14mm; }
+}
+
+/* propias de Edificios de Mamá */
+fieldset { border: 1px solid var(--borde); border-radius: 8px; padding: .6rem .9rem 0; margin: 0; min-width: 0; }
+legend { font-weight: 600; padding: 0 .3rem; }
+label small { font-size: .8rem; }
+.link.azul { color: var(--azul); font-weight: 600; }
+.aviso-fijo { background: var(--ambar-claro); color: #6b4000; border-radius: 6px; padding: .5rem .8rem; }
+dl.dos-columnas { grid-template-columns: max-content 1fr max-content 1fr; }
+@media (max-width: 760px) { dl.dos-columnas { grid-template-columns: auto 1fr; } }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+td.num, th.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+tfoot th { background: #eef1f4; color: var(--texto); font-size: .88rem; }
+dl.datos { display: grid; grid-template-columns: auto 1fr; gap: .25rem 1rem; margin: .6rem 0 1rem; }
+dl.datos dt { color: var(--sutil); } dl.datos dd { margin: 0; font-weight: 600; }
+.elegir-consorcio { flex-direction: row; align-items: center; gap: .5rem; color: var(--texto); }
+.elegir-consorcio select { width: auto; min-width: 16rem; }
+.buscar { max-width: 28rem; margin-bottom: .8rem; }
+:focus-visible { outline: 3px solid #f0a500; outline-offset: 2px; }
+main:focus { outline: none; }
+.recibo { border: 2px solid #17324d; border-radius: 8px; padding: 1rem 1.2rem; margin-bottom: 1rem; }
+body.hoja { background: #fff; padding: 16px; }
+body.hoja table { font-size: .85rem; }
+body.hoja th, body.hoja td { padding: .25rem .4rem; }
+
+.bloque { border-top: 1px solid var(--borde); padding-top: .6rem; margin-top: .6rem; }
+.bloque:first-of-type { border-top: 0; margin-top: 0; }
+.bloque.baja h4 { color: var(--sutil); }
+h4 { margin: .2rem 0 .4rem; font-size: 1rem; }
+tr.rubro th { background: var(--azul-claro); color: var(--azul); text-transform: none; letter-spacing: 0; font-size: .92rem; }
+tr.subtotal td { background: #f3f5f7; font-weight: 600; }
+table.caja { max-width: 760px; }
+/* liquidación impresa (formato Ley 941, como ACON) */
+.liq { page: apaisada; font-size: 9.5pt; }
+.liq h1.banda, .liq h2.banda { background: #1b6e63; color: #fff; text-align: center; font-size: 10pt; font-weight: 600;
+  padding: .25rem; margin: .8rem 0 .2rem; text-transform: uppercase; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.liq .ley { margin: 0 0 .3rem; font-size: 8.5pt; color: var(--sutil); }
+.liq .cabecera { display: grid; grid-template-columns: 1fr 1fr; gap: .2rem 2rem; }
+.liq .cabecera h3 { font-size: 10pt; margin: .3rem 0; text-transform: uppercase; }
+.liq .cabecera span { color: var(--sutil); }
+.liq table { margin-bottom: .4rem; } .liq th, .liq td { padding: .15rem .3rem; font-size: 8.5pt; }
+.liq tr.total-general td { background: #1b6e63; color: #fff; font-weight: 700; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.liq .bloque p { margin: .2rem 0; }
+@page apaisada { size: A4 landscape; margin: 10mm; }
+
+@media print {
+  body.hoja { padding: 0; }
+  .liq h2.banda { break-after: avoid; } .liq tr { break-inside: avoid; }
+  tfoot th, .recibo { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

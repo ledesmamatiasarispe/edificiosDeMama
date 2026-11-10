@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Edificios de Mamá</title>
+  <link rel="icon" type="image/svg+xml" href="/static/icono.svg">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div id="login" class="login oculto">
+    <form id="form-login" class="tarjeta login-caja">
+      <img class="login-logo" src="/static/icono.svg" alt="">
+      <h1>Edificios de Mamá</h1>
+      <p class="sutil">Administración de consorcios</p>
+      <label>Usuario <input name="usuario" autocomplete="username" autocapitalize="none" required></label>
+      <label>Contraseña <input name="password" type="password" autocomplete="current-password" required></label>
+      <p id="login-error" class="error" role="alert"></p>
+      <button class="primario">Entrar</button>
+    </form>
+  </div>
+
+  <div id="app" class="oculto">
+    <header class="barra no-imprimir">
+      <span class="marca"><img src="/static/icono.svg" alt="">Edificios de Mamá</span>
+      <nav id="menu" aria-label="Menú principal">
+        <a href="#inicio" data-vista="inicio">Inicio</a>
+        <a href="#expensas" data-vista="expensas">Expensas</a>
+        <a href="#cobros" data-vista="cobros">Cobros</a>
+        <a href="#saldos" data-vista="saldos">Saldos y morosos</a>
+        <a href="#consorcios" data-vista="consorcios">Consorcios</a>
+        <a href="#personas" data-vista="personas">Propietarios e inquilinos</a>
+        <a href="#proveedores" data-vista="proveedores">Proveedores</a>
+        <a href="#administracion" data-vista="administracion">Administración</a>
+        <a href="#usuarios" data-vista="usuarios" class="solo-admin">Usuarios</a>
+      </nav>
+      <span class="usuario"><span id="usuario-nombre"></span> · <button id="mi-password" class="link">Cambiar contraseña</button>
+        · <button id="salir" class="link">Salir</button></span>
+    </header>
+    <main id="vista" tabindex="-1"></main>
+  </div>
+
+  <dialog id="modal"><div id="modal-cuerpo"></div></dialog>
+  <dialog id="ayuda" aria-labelledby="ayuda-titulo"><div id="ayuda-cuerpo"></div></dialog>
+  <div id="aviso" class="aviso oculto" role="status" aria-live="polite"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
